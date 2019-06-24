@@ -1,99 +1,118 @@
 <!DOCTYPE html>
 <html>
-<head>
-<title>Desafio - Grafico de temperaturas</title>
-<style>
-	th[onclick] {
-		cursor: pointer;
-	}
+<head>  
+	<meta charset="utf-8">
+	<title>Desafio - Grafico de temperaturas</title>
+	<meta name="description" content="Desafio weatherApp">
+	<meta name="author" content="Pedro Rocha">
 
-	table, th, td {
-		border: thin solid;
-	}
-</style>
+	<style>
+		th[onclick] {
+			cursor: pointer;
+		}
+
+		table, th, td {
+			border: thin solid;
+		}
+	</style>
 </head>
 <body>
-<form onsubmit="return add(this)">
-	<label>Introduza a cidade: <input type="text" name="cidade"/></label>
-	<input type="submit" value="Adicionar">
-</form>
+	<form onsubmit="return add(this)">
+		<label>Introduza a cidade: <input type="text" name="cidade" required/></label>
+		<input id="btn" type="submit" value="Adicionar">
+	</form>
 
 
-<ul id="lista">
-</ul>
+	<ul id="lista">
+	</ul>
 
+	<hr/>
 
+	<table style="border-collapse:collapse">
+		<thead>
+			<tr>
+				<th rowspan="2">Cidade</th><th colspan="2">Temperatura</th><th colspan="2">Hor&aacute;rio In&iacute;cio</th>
+			</tr>
+			<tr>
+				<th onclick="order('tempMin')">M&iacute;nima</th>
+				<th onclick="order('tempMax')">M&aacute;xima</th>
+				<th onclick="order('horaMin')">Dia</th>
+				<th onclick="order('horaMax')">Noite</th>
+			</tr>
+		</thead>
+		<tbody>
+			
+		</tbody>
+	</table>
 
+	<script>
+		var fn = (function(){
+			"use strict";
+			var ordenacao, loading=false, dados = [];
 
-<template id="productrow">
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-</template>
-
-<table style="border-collapse:collapse">
-	<thead>
-		<tr>
-			<th rowspan="2">Cidade</th><th colspan="2">Temperatura</th><th colspan="2">Hor&aacute;rio In&iacute;cio</th>
-		</tr>
-		<tr>
-			<th onclick="order('tempMin')">M&iacute;nima</th><th onclick="order('tempMax')">M&aacute;xima</th><th onclick="order('horaMin')">Dia</th><th onclick="order('horaMax')">Noite</th></tr>
-		</tr>
-	</thead>
-	<tbody>
-		
-	</tbody>
-</table>
-
-<script>
-	var fn = (function(){
-		"use strict";
-		var ordenacao, dados = [];
-
-		function ajax(url, fn){
-
-		}
-
-		return {
-			orderBy: function(key) {
-				dados.sort(function(a,b){
-					if(key == 'tempMin' || key == 'tempMax')
-						return parseFloat(a[key]) > parseFloat(b[key]);
-					else if(key == 'horaMin' || key == 'horaMax') 
-						return parseFloat(a[key].replace(':', '.')) > parseFloat(b[key].replace(':', '.'));
-					else
-						return a[key] > b[key];
-				});
-
-				if(ordenacao == key) {
-					dados.reverse();
-				}
-				ordenacao = key;
-			},
-
-			addCity: function(form){
-				var c = form['cidade'];
-
-				var registo = ajax('/query/'+c.value, function(data){
-					var row = '<td>' + Object.values(registo).join('</td><td>') + '</td>';
-					document.querySelector('').innerHTML+=row;
-
-					dados.push(registo);	
-				});
-
-				document.getElementById('lista').innerHTML+="<li>"+c.value+"</li>";
-				c.value='';
-			return false;
+			function ajax(url, fn){   
+				// compatible with IE7+, Firefox, Chrome, Opera, Safari
+			    var xmlhttp = new XMLHttpRequest();
+			    xmlhttp.onreadystatechange = function(){
+			        if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
+			        	if(xmlhttp.responseText != "{}") 
+			        		fn(JSON.parse(xmlhttp.responseText));
+			        	else 
+			        		loading=false;
+			        }
+			    }
+			    xmlhttp.open("GET", url, true);
+			    xmlhttp.send();
 			}
-		}
-	})();
 
-	var order = fn.orderBy;
-	var add = fn.addCity;
-</script>
+			function joinRow(r){
+				return '<td>' + Object.values(r).join('</td><td>') + '</td>';
+			}
+
+			return {
+				orderBy: function(key) {
+					if(ordenacao === key) {
+						dados.reverse();
+					} else {
+						dados.sort(function(a,b){
+							if(key === 'tempMin' || key === 'tempMax')
+								return parseFloat(a[key]) > parseFloat(b[key]);
+							else if(key === 'horaMin' || key === 'horaMax') 
+								return parseFloat(a[key].replace(':', '.')) > parseFloat(b[key].replace(':', '.'));
+							else
+								return a[key] > b[key];
+						});
+					}
+					ordenacao = key;
+
+					var htmlArr = dados.map(joinRow);
+					document.querySelector('tbody').innerHTML='<tr>'+htmlArr.join('</tr><tr>')+'</tr>';
+				},
+
+				addCity: function(form){
+					var c = form['cidade'];
+					if(loading) {
+						alert('Aguarde, enquanto termina o processamento desta cidade.');
+						return;
+					};
+
+					loading=true;
+
+					ajax('/query/'+c.value, function(registo){
+						loading=false;
+						dados.push(registo);
+
+						document.querySelector('tbody').innerHTML+=joinRow(registo);
+						document.getElementById('lista').innerHTML+="<li>"+registo.cidade+"</li>";
+					});
+					c.value='';
+					return false;
+				}
+			};
+		})();
+
+		var order = fn.orderBy;
+		var add = fn.addCity;
+	</script>
 </body>
 </html>

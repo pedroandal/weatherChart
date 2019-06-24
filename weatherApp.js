@@ -10,7 +10,7 @@ var server = http.createServer(function(request, response) {
 			sendResponse(response, err ? "Ocorreu erro ao ler ficheiro html." : data.toString('utf8'), "text/html");
 		});
 	} else if(request.url.indexOf("/query/") > -1){
-		log.write('['+String(new Date())+'] Cidade: '+request.url.substr(7));
+		log.write('\n['+String(new Date())+'] Cidade: '+request.url.substr(7));
 		readDataFromPublicAPI(response, request.url.substr(7));
 	} else {
 		sendResponse(response, "404 - Not Found");
@@ -31,7 +31,7 @@ server.on('error', function (e) {
 	    console.log(e);	
 	}
 });
-server.listen(85);
+server.listen(isNaN(process.argv[2]) ? 80 : parseInt(process.argv[2]));
 
 
 function readDataFromPublicAPI(response, cidade){
@@ -60,12 +60,12 @@ function readDataFromPublicAPI(response, cidade){
 			} 
 
 			if(!found) {					
-  				sendResponse(response, "{}", "text/json");
+  				sendResponse(response, "{}", "application/json");
 			}
 		});
 	}).on('error', function(e) {
 		console.log("Erro ao contactar a API externa.");
-		sendResponse(response, "{}", "text/json");
+		sendResponse(response, "{}", "application/json");
 	});
 }
 
@@ -81,13 +81,13 @@ function getAndDecodeAPIinfo(response, id) {
 			data = JSON.parse(data);
 
 			var out = data.status == 0 ? {'cidade': data.location, 'tempMin': data.day[1].tempmin, 'tempMax': data.day[1].tempmax, 'horaMin' : data.day[1].sun.in, 'horaMax': data.day[1].sun.out} : {};
-			log.write(' || Dados: '+JSON.stringify(out)+'\n');
+			log.write(' || Dados: '+JSON.stringify(out));
 
-			sendResponse(response, out, "text/json");
+			sendResponse(response, out, "application/json");
 		});
 	}).on('error', function(e) {
 		console.log("Erro ao obter dados da API externa.");
-		sendResponse(response, "{}", "text/json");
+		sendResponse(response, "{}", "application/json");
 	});
 }
 
