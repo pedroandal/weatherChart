@@ -32,7 +32,7 @@ server.on('error', function (e) {
 	}
 });
 server.listen(isNaN(process.argv[2]) ? 80 : parseInt(process.argv[2]));
-
+console.log("Servidor está à escuta.");
 
 function readDataFromPublicAPI(response, cidade){
 	http.get("http://www.tempo.pt/peticionBuscador.php?lang=pt&texto="+cidade, function(res) {

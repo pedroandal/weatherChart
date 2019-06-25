@@ -14,6 +14,10 @@
 		table, th, td {
 			border: thin solid;
 		}
+		#erro {
+			color: red;
+			font-style: bold;
+		}
 	</style>
 </head>
 <body>
@@ -21,6 +25,7 @@
 		<label>Introduza a cidade: <input type="text" name="cidade" required/></label>
 		<input id="btn" type="submit" value="Adicionar">
 	</form>
+	<div id="erro">&nbsp;</div>
 
 
 	<ul id="lista">
@@ -31,7 +36,7 @@
 	<table style="border-collapse:collapse">
 		<thead>
 			<tr>
-				<th rowspan="2">Cidade</th><th colspan="2">Temperatura</th><th colspan="2">Hor&aacute;rio In&iacute;cio</th>
+				<th onclick="order('cidade')" rowspan="2">Cidade</th><th colspan="2">Temperatura</th><th colspan="2">Hor&aacute;rio In&iacute;cio</th>
 			</tr>
 			<tr>
 				<th onclick="order('tempMin')">M&iacute;nima</th>
@@ -44,9 +49,13 @@
 			
 		</tbody>
 	</table>
+<hr/>
+	<div id="container" style="max-width: 1024px; height: 400px; margin: 0 auto"></div>
+
+	<script src="https://code.highcharts.com/highcharts.js"></script>
 
 	<script>
-		var fn = (function(){
+		var WeatherApp = (function(){
 			"use strict";
 			var ordenacao, loading=false, dados = [];
 
@@ -57,16 +66,85 @@
 			        if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
 			        	if(xmlhttp.responseText != "{}") 
 			        		fn(JSON.parse(xmlhttp.responseText));
-			        	else 
+			        	else {
+			        		reportError('Não foi encontrada cidade, pelo nome introduzido.');
 			        		loading=false;
-			        }
-			    }
+		        		}
+		        	}
+		        }
 			    xmlhttp.open("GET", url, true);
 			    xmlhttp.send();
 			}
 
 			function joinRow(r){
 				return '<td>' + Object.values(r).join('</td><td>') + '</td>';
+			}
+
+			function generateChart(names, values) {
+				Highcharts.chart('container', {
+				    chart: {
+				        type: 'bar'
+				    },
+				    title: {
+				        text: 'Temperaturas Máximas e Mínimas'
+				    },
+				    subtitle: {
+				        text: ''
+				    },
+				    xAxis: {
+				        categories: names,
+				        title: {
+				            text: 'Cidades'
+				        }
+				    },
+				    yAxis: {
+				        min: 0,
+				        title: {
+				            text: 'Temperatura (ºC)',
+				            align: 'high'
+				        },
+				        labels: {
+				            overflow: 'justify'
+				        }
+				    },
+				    tooltip: {
+				        valueSuffix: ' ºC'
+				    },
+				    plotOptions: {
+				        bar: {
+				            dataLabels: {
+				                enabled: true
+				            }
+				        }
+				    },
+				    legend: {
+				        layout: 'vertical',
+				        align: 'right',
+				        verticalAlign: 'top',
+				        x: 10,
+				        y: 20,
+				        floating: true,
+				        borderWidth: 1,
+				        backgroundColor:
+				            Highcharts.defaultOptions.legend.backgroundColor || '#EEE',
+				        shadow: true
+				    },
+				    credits: {
+				        enabled: false
+				    },
+				    series: values
+				});
+			}
+
+			function reportError(msg) {
+				var div = document.getElementById('erro');
+				div.innerHTML = msg;
+
+				setTimeout(function(){
+					div.innerHTML='&nbsp;';
+				}, 2500);
+
+				return false;
 			}
 
 			return {
@@ -91,28 +169,51 @@
 
 				addCity: function(form){
 					var c = form['cidade'];
-					if(loading) {
-						alert('Aguarde, enquanto termina o processamento desta cidade.');
-						return;
-					};
+					if(loading) 
+						return reportError('Aguarde, enquanto termina o processamento desta cidade.');
 
 					loading=true;
 
 					ajax('/query/'+c.value, function(registo){
 						loading=false;
+
+						//evitar entradas duplicadas
+						if(dados.find(function(a){return a === registo.cidade;}) === registo.cidade){
+							return;
+						}
+
 						dados.push(registo);
+
+						//nao permitir insercao + de 2 registos
+						if(dados.length > 2){
+							c.disabled = true;
+							document.getElementById('btn').style.display='none';
+						}
 
 						document.querySelector('tbody').innerHTML+=joinRow(registo);
 						document.getElementById('lista').innerHTML+="<li>"+registo.cidade+"</li>";
+
+						// gerar grafico
+						var _names = [], _min = [], _max = [];
+						for(var i=0; i<dados.length; i++) {
+							_names.push(dados[i].cidade);
+							_min.push(parseFloat(dados[i].tempMin));
+							_max.push(parseFloat(dados[i].tempMax));
+						}
+						generateChart(_names, [{'name': 'Mínima', 'data': _min}, {'name': 'Máxima', 'data': _max}]);
 					});
 					c.value='';
+
 					return false;
 				}
 			};
 		})();
 
-		var order = fn.orderBy;
-		var add = fn.addCity;
+		var order = WeatherApp.orderBy;
+		var add = WeatherApp.addCity;
+
+
+
 	</script>
 </body>
 </html>
